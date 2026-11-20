@@ -142,8 +142,6 @@
           </div>
           <div class="flex items-center gap-2 text-xs">
             <button id="allAttendBtn" type="button" class="text-green-700 hover:underline font-medium">모두 참석</button>
-            <span class="text-gray-300">|</span>
-            <button id="resetSampleBtn" type="button" class="text-gray-500 hover:underline">샘플 초기화</button>
           </div>
         </div>
 
@@ -295,7 +293,7 @@
     ];
 
     const DEFAULT_STATE = {
-      title: '목요 테니스 동호회',
+      title: '테니스 동호회',
       courtsPerSlot: [1, 2, 2, 2, 2], // 18:00-18:30: 1 court, rest: 2 courts
       options: {
         minimizeSingles: true,
@@ -304,20 +302,20 @@
         noConsecutiveRest: true
       },
       members: [
-        { id: 'm1', name: '김민수', attending: true, start: '18:00', end: '20:30', singlesPref: 'neutral' },
-        { id: 'm2', name: '이지현', attending: true, start: '18:00', end: '20:00', singlesPref: 'no' },
-        { id: 'm3', name: '박준영', attending: true, start: '18:00', end: '20:30', singlesPref: 'yes' },
-        { id: 'm4', name: '최서연', attending: true, start: '18:30', end: '20:30', singlesPref: 'no' },
-        { id: 'm5', name: '정우성', attending: true, start: '18:00', end: '20:30', singlesPref: 'neutral' },
-        { id: 'm6', name: '한지민', attending: true, start: '18:30', end: '20:00', singlesPref: 'no' },
-        { id: 'm7', name: '강동원', attending: true, start: '18:00', end: '20:30', singlesPref: 'yes' },
-        { id: 'm8', name: '윤아름', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' },
-        { id: 'm9', name: '송태양', attending: true, start: '18:30', end: '20:30', singlesPref: 'neutral' },
-        { id: 'm10', name: '임하늘', attending: false, start: '18:00', end: '20:30', singlesPref: 'no' }
+        { id: 'm1', name: '강성환', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' },
+        { id: 'm2', name: '김승섭', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' },
+        { id: 'm3', name: '김영훈', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' },
+        { id: 'm4', name: '박제형', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' },
+        { id: 'm5', name: '박진우', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' },
+        { id: 'm6', name: '백지훈', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' },
+        { id: 'm7', name: '이상선', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' },
+        { id: 'm8', name: '차민서', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' },
+        { id: 'm9', name: '최종태', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' },
+        { id: 'm10', name: '하창엽', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' }
       ]
     };
 
-    const STORAGE_KEY = 'tennis_club_scheduler_v1';
+    const STORAGE_KEY = 'tennis_club_scheduler_v2';
     let state = loadState();
     let currentFilter = 'all';
     let currentTab = 'attendance';
@@ -369,7 +367,12 @@
       return JSON.parse(JSON.stringify(DEFAULT_STATE));
     }
 
+    function sortMembers() {
+      state.members.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    }
+
     function saveState() {
+      sortMembers();
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       } catch (e) {}
@@ -764,6 +767,7 @@
 
     // ===== Rendering =====
     function renderAll() {
+      sortMembers();
       renderHeaderStats();
       renderMembers();
       renderSettings();
@@ -1196,13 +1200,7 @@
       showToast('모든 회원을 참석으로 변경했습니다.');
     });
 
-    document.getElementById('resetSampleBtn').addEventListener('click', () => {
-      state = JSON.parse(JSON.stringify(DEFAULT_STATE));
-      saveState();
-      currentSchedule = null;
-      renderAll();
-      showToast('기본 샘플 명단으로 초기화했습니다.');
-    });
+
 
     document.getElementById('generateFromAttendanceBtn').addEventListener('click', () => {
       switchTab('schedule');
