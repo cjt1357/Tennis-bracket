@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>테니스 동호회 대진표 &amp; 참석 투표</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+      background-color: #f4f7f5;
+      color: #18231d;
+    }
+    .tennis-gradient {
+      background: linear-gradient(135deg, #14532d 0%, #166534 55%, #15803d 100%);
+    }
+    .ball-badge {
+      background-color: #d9f99d;
+      color: #14532d;
+    }
+    .card-shadow {
+      box-shadow: 0 2px 10px rgba(20, 83, 45, 0.06);
+    }
+    .tab-active {
+      background-color: #14532d;
+      color: #ffffff;
+    }
+    .tab-inactive {
+      background-color: #ffffff;
+      color: #374151;
+    }
+    .toast-enter {
+      animation: toastSlide 0.25s ease-out;
+    }
+    @keyframes toastSlide {
+      from { opacity: 0; transform: translate(-50%, 12px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-16">
+  <!-- Header -->
+  <header class="tennis-gradient text-white shadow-md">
+    <div class="max-w-4xl mx-auto px-4 py-4 sm:py-5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl ball-badge flex items-center justify-center shrink-0 shadow-sm">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="9.5" />
+              <path d="M5.5 5.5c3.5 3.5 3.5 9.5 0 13" />
+              <path d="M18.5 5.5c-3.5 3.5-3.5 9.5 0 13" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg sm:text-xl font-bold tracking-tight" id="clubTitleDisplay">테니스 동호회 대진표</h1>
+              <button id="editClubTitleBtn" type="button" class="text-green-200 hover:text-white p-1 rounded-md transition" title="모임 제목 수정">
+                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+            <p class="text-xs sm:text-sm text-green-100" id="headerSubtitle">18:00 ~ 20:30 · 참석 시간 선택 후 자동 대진 생성</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="copyShareLinkBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-lime-300 hover:bg-lime-200 text-green-950 font-semibold text-xs sm:text-sm transition shadow-sm">
+            <i data-lucide="share-2" class="w-4 h-4"></i>
+            <span>카톡 공유 링크 복사</span>
+          </button>
+          <button id="copyKakaoTextBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/15 hover:bg-white/25 text-white font-medium text-xs sm:text-sm transition">
+            <i data-lucide="message-square" class="w-4 h-4"></i>
+            <span>대진표 텍스트 복사</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex gap-2 mt-4" aria-label="메인 메뉴">
+        <button type="button" data-tab="attendance" class="tab-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition tab-active">
+          1. 참석 &amp; 시간 선택
+        </button>
+        <button type="button" data-tab="schedule" class="tab-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition tab-inactive">
+          2. 대진표 보기
+        </button>
+        <button type="button" data-tab="settings" class="tab-btn flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-semibold transition tab-inactive">
+          코트 &amp; 규칙 설정
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 mt-5 space-y-5">
+    <!-- Quick Status Bar -->
+    <section class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div class="bg-white rounded-xl p-3 card-shadow border border-green-100">
+        <div class="text-xs text-gray-500">참석 인원</div>
+        <div class="text-lg font-bold text-green-900 mt-0.5"><span id="statAttending">0</span>명 <span class="text-xs font-normal text-gray-400">/ <span id="statTotal">0</span>명</span></div>
+      </div>
+      <div class="bg-white rounded-xl p-3 card-shadow border border-green-100">
+        <div class="text-xs text-gray-500">18:00~18:30 코트</div>
+        <div class="text-lg font-bold text-green-900 mt-0.5" id="statFirstCourt">1면</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 card-shadow border border-green-100">
+        <div class="text-xs text-gray-500">조기 퇴근 / 늦참</div>
+        <div class="text-lg font-bold text-amber-700 mt-0.5" id="statPartialCount">0명</div>
+      </div>
+      <div class="bg-white rounded-xl p-3 card-shadow border border-green-100">
+        <div class="text-xs text-gray-500">단식 최소화</div>
+        <div class="text-lg font-bold text-emerald-700 mt-0.5" id="statSinglesMode">켜짐</div>
+      </div>
+    </section>
+
+    <!-- TAB 1: Attendance & Time Selection -->
+    <section id="tab-attendance" class="space-y-4">
+      <div class="bg-white rounded-2xl p-4 sm:p-5 card-shadow border border-gray-100">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-gray-900">회원별 참석 여부 및 시간 선택</h2>
+            <p class="text-xs sm:text-sm text-gray-500 mt-0.5">본인 이름을 찾아 참석 여부, 도착/종료 시간, 단식 선호도를 선택하세요.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="addMemberBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-700 hover:bg-green-800 text-white text-xs sm:text-sm font-semibold transition">
+              <i data-lucide="user-plus" class="w-4 h-4"></i>
+              <span>회원 추가</span>
+            </button>
+            <button id="generateFromAttendanceBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-lime-300 hover:bg-lime-400 text-green-950 text-xs sm:text-sm font-bold transition">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+              <span>대진표 짜기</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter & Quick Actions -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-100">
+          <div class="flex items-center gap-1.5 text-xs">
+            <button type="button" data-filter="all" class="filter-btn px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-900">전체</button>
+            <button type="button" data-filter="attending" class="filter-btn px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600">참석만</button>
+            <button type="button" data-filter="absent" class="filter-btn px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-600">불참만</button>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <button id="allAttendBtn" type="button" class="text-green-700 hover:underline font-medium">모두 참석</button>
+            <span class="text-gray-300">|</span>
+            <button id="resetSampleBtn" type="button" class="text-gray-500 hover:underline">샘플 초기화</button>
+          </div>
+        </div>
+
+        <!-- Member Cards List -->
+        <div id="memberList" class="space-y-2.5"></div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Generated Schedule -->
+    <section id="tab-schedule" class="hidden space-y-3">
+      <!-- Compact At-a-Glance Schedule Card -->
+      <div class="bg-white rounded-2xl p-3.5 sm:p-4 card-shadow border border-gray-100">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h2 class="text-base font-bold text-gray-900">한눈에 보는 대진표</h2>
+            <div id="qualityMetrics" class="flex flex-wrap items-center gap-1.5 text-[11px]"></div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="toggleDetailBtn" type="button" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium transition">
+              <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
+              <span>회원별 통계</span>
+            </button>
+            <button id="reoptimizeBtn" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-700 hover:bg-green-800 text-white text-xs font-semibold transition">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              <span>대진표 다시 짜기</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Single-View Compact Matrix -->
+        <div id="scheduleSlots" class="overflow-x-auto"></div>
+      </div>
+
+      <!-- Collapsible Player Summary Table -->
+      <div id="playerSummaryCard" class="hidden bg-white rounded-2xl p-4 card-shadow border border-gray-100">
+        <h3 class="text-sm font-bold text-gray-900 mb-2.5">회원별 배정 현황</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs sm:text-sm text-left">
+            <thead>
+              <tr class="border-b border-gray-200 text-gray-500">
+                <th class="py-2 pr-3 font-medium">이름</th>
+                <th class="py-2 px-2 font-medium">참석 시간</th>
+                <th class="py-2 px-2 font-medium text-center">총 게임</th>
+                <th class="py-2 px-2 font-medium text-center">복식/단식</th>
+                <th class="py-2 px-2 font-medium text-center">연속 휴식</th>
+                <th class="py-2 pl-2 font-medium">타임별 상태</th>
+              </tr>
+            </thead>
+            <tbody id="playerSummaryBody" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Court & Rule Settings -->
+    <section id="tab-settings" class="hidden space-y-4">
+      <div class="bg-white rounded-2xl p-4 sm:p-5 card-shadow border border-gray-100 space-y-5">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-gray-900">코트 운영 및 대진 규칙</h2>
+          <p class="text-xs sm:text-sm text-gray-500 mt-0.5">시간대별 사용 코트 수와 단식/휴식 옵션을 설정합니다.</p>
+        </div>
+
+        <!-- Court counts per slot -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-800 mb-2.5">시간대별 코트 수 (30분 단위)</h3>
+          <div id="courtSettingsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
+        </div>
+
+        <!-- Algorithm Preferences -->
+        <div class="pt-4 border-t border-gray-100 space-y-3">
+          <h3 class="text-sm font-semibold text-gray-800">대진표 배정 옵션</h3>
+
+          <label class="flex items-start justify-between gap-3 p-3 rounded-xl bg-gray-50 cursor-pointer">
+            <div>
+              <div class="text-sm font-semibold text-gray-900">단식 최소화</div>
+              <div class="text-xs text-gray-500 mt-0.5">가능한 한 복식(4명)으로 구성하고, 인원이 애매할 때만 단식을 배정합니다.</div>
+            </div>
+            <input id="optMinimizeSingles" type="checkbox" class="mt-1 w-5 h-5 accent-green-700 rounded" />
+          </label>
+
+          <label class="flex items-start justify-between gap-3 p-3 rounded-xl bg-gray-50 cursor-pointer">
+            <div>
+              <div class="text-sm font-semibold text-gray-900">인원 부족 시 단식 허용 (2~3명 남을 때)</div>
+              <div class="text-xs text-gray-500 mt-0.5">끄면 복식(4명)이 안 될 때 해당 코트를 비우고 휴식 처리합니다.</div>
+            </div>
+            <input id="optAllowSingles" type="checkbox" class="mt-1 w-5 h-5 accent-green-700 rounded" />
+          </label>
+
+          <label class="flex items-start justify-between gap-3 p-3 rounded-xl bg-gray-50 cursor-pointer">
+            <div>
+              <div class="text-sm font-semibold text-gray-900">조기 퇴근자 앞 시간 우선 배정</div>
+              <div class="text-xs text-gray-500 mt-0.5">20:00 이전 퇴근 등 남은 시간이 적은 회원을 앞 타임에 우선 배치합니다.</div>
+            </div>
+            <input id="optEarlyPriority" type="checkbox" class="mt-1 w-5 h-5 accent-green-700 rounded" />
+          </label>
+
+          <label class="flex items-start justify-between gap-3 p-3 rounded-xl bg-gray-50 cursor-pointer">
+            <div>
+              <div class="text-sm font-semibold text-gray-900">연속 휴식 금지 (최우선)</div>
+              <div class="text-xs text-gray-500 mt-0.5">직전 타임에 쉰 회원이 다음 타임에도 참석 가능하면 우선 투입합니다.</div>
+            </div>
+            <input id="optNoConsecutiveRest" type="checkbox" class="mt-1 w-5 h-5 accent-green-700 rounded" />
+          </label>
+        </div>
+
+        <!-- Share & Sync Help -->
+        <div class="pt-4 border-t border-gray-100">
+          <div class="rounded-xl bg-green-50 border border-green-200 p-3.5 text-xs text-green-900 space-y-1.5">
+            <div class="font-bold flex items-center gap-1.5">
+              <i data-lucide="info" class="w-4 h-4 text-green-700"></i>
+              <span>카톡방 공유 팁</span>
+            </div>
+            <p>이 페이지는 별도 서버 없이 링크 주소(URL) 안에 회원 명단과 참석 시간 데이터를 저장합니다. <strong>카톡 공유 링크 복사</strong>를 누르면 현재 입력된 참석 현황이 담긴 링크가 복사됩니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal for Club Title or Add/Edit Member -->
+  <div id="modalBackdrop" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 id="modalTitle" class="text-base font-bold text-gray-900">회원 추가</h3>
+        <button id="closeModalBtn" type="button" class="text-gray-400 hover:text-gray-600 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="modalBody" class="space-y-3"></div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button id="modalCancelBtn" type="button" class="px-3.5 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100">취소</button>
+        <button id="modalSaveBtn" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold bg-green-700 hover:bg-green-800 text-white">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-gray-900 text-white text-xs sm:text-sm font-medium shadow-lg toast-enter"></div>
+
+  <script>
+    // ===== Constants & Time Slots =====
+    const TIME_POINTS = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30'];
+    const SLOTS = [
+      { id: 0, start: '18:00', end: '18:30', label: '18:00 ~ 18:30' },
+      { id: 1, start: '18:30', end: '19:00', label: '18:30 ~ 19:00' },
+      { id: 2, start: '19:00', end: '19:30', label: '19:00 ~ 19:30' },
+      { id: 3, start: '19:30', end: '20:00', label: '19:30 ~ 20:00' },
+      { id: 4, start: '20:00', end: '20:30', label: '20:00 ~ 20:30' }
+    ];
+
+    const DEFAULT_STATE = {
+      title: '목요 테니스 동호회',
+      courtsPerSlot: [1, 2, 2, 2, 2], // 18:00-18:30: 1 court, rest: 2 courts
+      options: {
+        minimizeSingles: true,
+        allowSingles: true,
+        earlyPriority: true,
+        noConsecutiveRest: true
+      },
+      members: [
+        { id: 'm1', name: '김민수', attending: true, start: '18:00', end: '20:30', singlesPref: 'neutral' },
+        { id: 'm2', name: '이지현', attending: true, start: '18:00', end: '20:00', singlesPref: 'no' },
+        { id: 'm3', name: '박준영', attending: true, start: '18:00', end: '20:30', singlesPref: 'yes' },
+        { id: 'm4', name: '최서연', attending: true, start: '18:30', end: '20:30', singlesPref: 'no' },
+        { id: 'm5', name: '정우성', attending: true, start: '18:00', end: '20:30', singlesPref: 'neutral' },
+        { id: 'm6', name: '한지민', attending: true, start: '18:30', end: '20:00', singlesPref: 'no' },
+        { id: 'm7', name: '강동원', attending: true, start: '18:00', end: '20:30', singlesPref: 'yes' },
+        { id: 'm8', name: '윤아름', attending: true, start: '18:00', end: '20:30', singlesPref: 'no' },
+        { id: 'm9', name: '송태양', attending: true, start: '18:30', end: '20:30', singlesPref: 'neutral' },
+        { id: 'm10', name: '임하늘', attending: false, start: '18:00', end: '20:30', singlesPref: 'no' }
+      ]
+    };
+
+    const STORAGE_KEY = 'tennis_club_scheduler_v1';
+    let state = loadState();
+    let currentFilter = 'all';
+    let currentTab = 'attendance';
+    let currentSchedule = null;
+    let modalAction = null;
+
+    // ===== Persistence & URL Hash Encoding =====
+    function encodeStateToHash(st) {
+      try {
+        const json = JSON.stringify(st);
+        const bytes = new TextEncoder().encode(json);
+        let bin = '';
+        bytes.forEach(b => { bin += String.fromCharCode(b); });
+        return '#d=' + btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function decodeStateFromHash(hash) {
+      try {
+        if (!hash || !hash.startsWith('#d=')) return null;
+        let b64 = hash.slice(3).replace(/-/g, '+').replace(/_/g, '/');
+        while (b64.length % 4) b64 += '=';
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const json = new TextDecoder().decode(bytes);
+        const parsed = JSON.parse(json);
+        if (parsed && Array.isArray(parsed.members) && Array.isArray(parsed.courtsPerSlot)) {
+          return parsed;
+        }
+      } catch (e) {
+        return null;
+      }
+      return null;
+    }
+
+    function loadState() {
+      const fromHash = decodeStateFromHash(window.location.hash);
+      if (fromHash) return fromHash;
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && Array.isArray(parsed.members)) return parsed;
+        }
+      } catch (e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_STATE));
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {}
+      try {
+        const newHash = encodeStateToHash(state);
+        if (newHash) history.replaceState(null, '', newHash);
+      } catch (e) {}
+    }
+
+    // ===== Helpers =====
+    function timeToIdx(t) {
+      return TIME_POINTS.indexOf(t);
+    }
+
+    function isMemberAvailableInSlot(member, slotIdx) {
+      if (!member.attending) return false;
+      const s = timeToIdx(member.start);
+      const e = timeToIdx(member.end);
+      return s <= slotIdx && slotIdx < e;
+    }
+
+    function getMemberAvailableSlots(member) {
+      return SLOTS.filter(sl => isMemberAvailableInSlot(member, sl.id)).map(sl => sl.id);
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.add('hidden'), 2600);
+    }
+
+    function copyTextToClipboard(text, successMsg) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast(successMsg)).catch(() => fallbackCopy(text, successMsg));
+      } else {
+        fallbackCopy(text, successMsg);
+      }
+    }
+
+    function fallbackCopy(text, successMsg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg);
+      } catch (e) {
+        showToast('복사에 실패했습니다. 직접 선택해 복사해주세요.');
+      }
+      document.body.removeChild(ta);
+    }
+
+    // ===== Match Scheduling Optimizer =====
+    function runScheduleOptimizer() {
+      const attending = state.members.filter(m => m.attending && getMemberAvailableSlots(m).length > 0);
+      if (attending.length < 2) {
+        currentSchedule = { slots: SLOTS.map(s => ({ ...s, courts: [], resting: [] })), stats: {}, metrics: null };
+        return currentSchedule;
+      }
+
+      const opts = state.options;
+      let bestResult = null;
+      let bestPenalty = Infinity;
+
+      const ITERATIONS = 350;
+
+      for (let iter = 0; iter < ITERATIONS; iter++) {
+        const result = buildSingleSchedule(attending, opts, iter > 0);
+        const penalty = evaluateSchedule(result, attending, opts);
+        if (penalty < bestPenalty) {
+          bestPenalty = penalty;
+          bestResult = result;
+        }
+      }
+
+      currentSchedule = computeMetrics(bestResult, attending);
+      return currentSchedule;
+    }
+
+    function buildSingleSchedule(attending, opts, randomized) {
+      const gamesPlayed = {};
+      const singlesPlayed = {};
+      const partnerCount = {};
+      const opponentCount = {};
+      const slotPlayed = {}; // memberId -> array of booleans for slots 0..4
+
+      attending.forEach(m => {
+        gamesPlayed[m.id] = 0;
+        singlesPlayed[m.id] = 0;
+        partnerCount[m.id] = {};
+        opponentCount[m.id] = {};
+        slotPlayed[m.id] = [false, false, false, false, false];
+      });
+
+      const slotResults = [];
+
+      for (let s = 0; s < SLOTS.length; s++) {
+        const courtCount = state.courtsPerSlot[s] || 0;
+        const eligible = attending.filter(m => isMemberAvailableInSlot(m, s));
+
+        if (courtCount === 0 || eligible.length < 2) {
+          slotResults.push({
+            ...SLOTS[s],
+            courtCount,
+            courts: [],
+            resting: eligible.map(m => m.id)
+          });
+          continue;
+        }
+
+        // Determine court formats (4 = doubles, 2 = singles)
+        const formats = decideCourtFormats(eligible.length, courtCount, opts);
+        const totalNeeded = formats.reduce((a, b) => a + b, 0);
+
+        // Score & sort eligible players to pick who plays in this slot
+        const scored = eligible.map(m => {
+          const restedPrev = s > 0 && isMemberAvailableInSlot(m, s - 1) && !slotPlayed[m.id][s - 1];
+          const remainingAfter = SLOTS.filter(sl => sl.id > s && isMemberAvailableInSlot(m, sl.id)).length;
+          const totalAvail = getMemberAvailableSlots(m).length;
+          const playedRatio = gamesPlayed[m.id] / Math.max(1, totalAvail);
+
+          let priority = 0;
+          if (opts.noConsecutiveRest && restedPrev) priority += 10000;
+          priority -= gamesPlayed[m.id] * 120;
+          priority -= playedRatio * 40;
+          if (opts.earlyPriority) {
+            // Fewer remaining slots -> higher urgency to play now
+            priority += (5 - remainingAfter) * 35;
+          }
+          if (randomized) {
+            priority += (Math.random() - 0.5) * 28;
+          }
+          return { member: m, priority };
+        });
+
+        scored.sort((a, b) => b.priority - a.priority);
+        const chosen = scored.slice(0, totalNeeded).map(x => x.member);
+        const chosenIds = new Set(chosen.map(m => m.id));
+        const resting = eligible.filter(m => !chosenIds.has(m.id)).map(m => m.id);
+
+        // Assign chosen players into the decided courts (doubles first, singles with singles-preferring players)
+        const courts = assignPlayersToCourts(chosen, formats, {
+          partnerCount,
+          opponentCount,
+          singlesPlayed,
+          randomized
+        });
+
+        // Update tracking
+        courts.forEach(c => {
+          const allPlayers = [...c.teamA, ...c.teamB];
+          allPlayers.forEach(pid => {
+            gamesPlayed[pid]++;
+            slotPlayed[pid][s] = true;
+            if (c.type === 'singles') singlesPlayed[pid]++;
+          });
+          if (c.type === 'doubles') {
+            addPair(partnerCount, c.teamA[0], c.teamA[1]);
+            addPair(partnerCount, c.teamB[0], c.teamB[1]);
+          }
+          c.teamA.forEach(a => c.teamB.forEach(b => addPair(opponentCount, a, b)));
+        });
+
+        slotResults.push({
+          ...SLOTS[s],
+          courtCount,
+          courts,
+          resting
+        });
+      }
+
+      return { slots: slotResults, gamesPlayed, singlesPlayed, partnerCount, opponentCount, slotPlayed };
+    }
+
+    function addPair(map, a, b) {
+      map[a][b] = (map[a][b] || 0) + 1;
+      map[b][a] = (map[b][a] || 0) + 1;
+    }
+
+    function decideCourtFormats(availCount, courtCount, opts) {
+      // Returns array like [4, 4] or [4, 2] or [4] or [2]
+      if (courtCount === 1) {
+        if (availCount >= 4) return [4];
+        if (availCount >= 2 && opts.allowSingles) return [2];
+        return [];
+      }
+      // courtCount === 2
+      if (availCount >= 8) return [4, 4];
+      if (availCount >= 6) {
+        if (opts.allowSingles) return [4, 2];
+        return [4];
+      }
+      if (availCount >= 4) return [4];
+      if (availCount >= 2 && opts.allowSingles) return [2];
+      return [];
+    }
+
+    function assignPlayersToCourts(chosen, formats, ctx) {
+      const pool = [...chosen];
+      const courts = [];
+
+      // If there's a singles court and a doubles court, pick players who prefer singles (or don't dislike it) for singles
+      const singlesFormats = formats.filter(f => f === 2);
+      const doublesFormats = formats.filter(f => f === 4);
+
+      const singlesMatches = [];
+      if (singlesFormats.length > 0) {
+        for (let i = 0; i < singlesFormats.length; i++) {
+          pool.sort((a, b) => {
+            const prefScore = m => (m.singlesPref === 'yes' ? 3 : m.singlesPref === 'neutral' ? 1 : -5) - (ctx.singlesPlayed[m.id] * 2);
+            const diff = prefScore(b) - prefScore(a);
+            return ctx.randomized ? diff + (Math.random() - 0.5) * 1.5 : diff;
+          });
+          const p1 = pool.shift();
+          // Pick opponent with fewest prior matches against p1
+          pool.sort((a, b) => {
+            const oppA = (ctx.opponentCount[p1.id][a.id] || 0);
+            const oppB = (ctx.opponentCount[p1.id][b.id] || 0);
+            const prefA = (a.singlesPref === 'yes' ? -1 : a.singlesPref === 'no' ? 3 : 0);
+            const prefB = (b.singlesPref === 'yes' ? -1 : b.singlesPref === 'no' ? 3 : 0);
+            return (oppA + prefA) - (oppB + prefB);
+          });
+          const p2 = pool.shift();
+          singlesMatches.push({ type: 'singles', teamA: [p1.id], teamB: [p2.id] });
+        }
+      }
+
+      // Remaining pool goes to doubles
+      for (let i = 0; i < doublesFormats.length; i++) {
+        const group = pool.splice(0, 4);
+        if (group.length === 4) {
+          // Evaluate 3 possible team splits: (0,1 vs 2,3), (0,2 vs 1,3), (0,3 vs 1,2)
+          const splits = [
+            [[group[0], group[1]], [group[2], group[3]]],
+            [[group[0], group[2]], [group[1], group[3]]],
+            [[group[0], group[3]], [group[1], group[2]]]
+          ];
+          let bestSplit = splits[0];
+          let bestCost = Infinity;
+          splits.forEach(sp => {
+            const [tA, tB] = sp;
+            let cost = 0;
+            cost += (ctx.partnerCount[tA[0].id][tA[1].id] || 0) * 15;
+            cost += (ctx.partnerCount[tB[0].id][tB[1].id] || 0) * 15;
+            tA.forEach(a => tB.forEach(b => {
+              cost += (ctx.opponentCount[a.id][b.id] || 0) * 4;
+            }));
+            if (ctx.randomized) cost += Math.random() * 2;
+            if (cost < bestCost) {
+              bestCost = cost;
+              bestSplit = sp;
+            }
+          });
+          courts.push({
+            type: 'doubles',
+            teamA: [bestSplit[0][0].id, bestSplit[0][1].id],
+            teamB: [bestSplit[1][0].id, bestSplit[1][1].id]
+          });
+        }
+      }
+
+      singlesMatches.forEach(sm => courts.push(sm));
+      // Label court numbers 1, 2
+      return courts.map((c, idx) => ({ ...c, courtNum: idx + 1 }));
+    }
+
+    function evaluateSchedule(res, attending, opts) {
+      let penalty = 0;
+      const memberMap = Object.fromEntries(attending.map(m => [m.id, m]));
+
+      // 1. Consecutive rest check
+      let consecutiveRests = 0;
+      attending.forEach(m => {
+        for (let s = 1; s < SLOTS.length; s++) {
+          if (isMemberAvailableInSlot(m, s - 1) && isMemberAvailableInSlot(m, s)) {
+            if (!res.slotPlayed[m.id][s - 1] && !res.slotPlayed[m.id][s]) {
+              consecutiveRests++;
+            }
+          }
+        }
+      });
+      if (opts.noConsecutiveRest) penalty += consecutiveRests * 10000;
+
+      // 2. Fairness of game counts (both raw spread & ratio to available slots)
+      const counts = attending.map(m => res.gamesPlayed[m.id]);
+      const minG = Math.min(...counts);
+      const maxG = Math.max(...counts);
+      penalty += (maxG - minG) * 450;
+
+      // Penalize if an attending member got 0 games or way below average for their available time
+      attending.forEach(m => {
+        const avail = getMemberAvailableSlots(m).length;
+        const g = res.gamesPlayed[m.id];
+        if (g === 0) penalty += 2000;
+        const expected = Math.min(avail, 3);
+        if (g < expected) penalty += (expected - g) * 60;
+      });
+
+      // 3. Early leaver priority (did early leavers play in their earlier slots?)
+      if (opts.earlyPriority) {
+        attending.forEach(m => {
+          if (timeToIdx(m.end) < 5) { // leaves before 20:30
+            SLOTS.forEach(sl => {
+              if (isMemberAvailableInSlot(m, sl.id) && !res.slotPlayed[m.id][sl.id]) {
+                penalty += (5 - sl.id) * 25;
+              }
+            });
+          }
+        });
+      }
+
+      // 4. Singles penalty
+      res.slots.forEach(sl => {
+        sl.courts.forEach(c => {
+          if (c.type === 'singles') {
+            if (opts.minimizeSingles) penalty += 150;
+            [...c.teamA, ...c.teamB].forEach(pid => {
+              const pref = memberMap[pid]?.singlesPref;
+              if (pref === 'no') penalty += 300;
+              else if (pref === 'yes') penalty -= 40;
+            });
+          }
+        });
+      });
+
+      // 5. Repeat partners / opponents
+      Object.values(res.partnerCount).forEach(obj => {
+        Object.values(obj).forEach(cnt => {
+          if (cnt > 1) penalty += (cnt - 1) * 20;
+        });
+      });
+      Object.values(res.opponentCount).forEach(obj => {
+        Object.values(obj).forEach(cnt => {
+          if (cnt > 1) penalty += (cnt - 1) * 4;
+        });
+      });
+
+      return penalty;
+    }
+
+    function computeMetrics(res, attending) {
+      let consecutiveRests = 0;
+      let singlesCount = 0;
+      let doublesCount = 0;
+      let unwillingSingles = 0;
+      const memberMap = Object.fromEntries(attending.map(m => [m.id, m]));
+
+      attending.forEach(m => {
+        for (let s = 1; s < SLOTS.length; s++) {
+          if (isMemberAvailableInSlot(m, s - 1) && isMemberAvailableInSlot(m, s)) {
+            if (!res.slotPlayed[m.id][s - 1] && !res.slotPlayed[m.id][s]) {
+              consecutiveRests++;
+            }
+          }
+        }
+      });
+
+      res.slots.forEach(sl => {
+        sl.courts.forEach(c => {
+          if (c.type === 'singles') {
+            singlesCount++;
+            [...c.teamA, ...c.teamB].forEach(pid => {
+              if (memberMap[pid]?.singlesPref === 'no') unwillingSingles++;
+            });
+          } else {
+            doublesCount++;
+          }
+        });
+      });
+
+      const counts = attending.map(m => res.gamesPlayed[m.id]);
+      const minGames = counts.length ? Math.min(...counts) : 0;
+      const maxGames = counts.length ? Math.max(...counts) : 0;
+
+      return {
+        ...res,
+        metrics: {
+          consecutiveRests,
+          singlesCount,
+          doublesCount,
+          unwillingSingles,
+          minGames,
+          maxGames
+        }
+      };
+    }
+
+    // ===== Rendering =====
+    function renderAll() {
+      renderHeaderStats();
+      renderMembers();
+      renderSettings();
+      if (!currentSchedule) runScheduleOptimizer();
+      renderSchedule();
+      lucide.createIcons();
+    }
+
+    function renderHeaderStats() {
+      document.getElementById('clubTitleDisplay').textContent = state.title;
+      const attending = state.members.filter(m => m.attending);
+      const partial = attending.filter(m => m.start !== '18:00' || m.end !== '20:30');
+      document.getElementById('statAttending').textContent = attending.length;
+      document.getElementById('statTotal').textContent = state.members.length;
+      document.getElementById('statFirstCourt').textContent = `${state.courtsPerSlot[0]}면`;
+      document.getElementById('statPartialCount').textContent = `${partial.length}명`;
+      document.getElementById('statSinglesMode').textContent = state.options.minimizeSingles ? '켜짐' : '꺼짐';
+    }
+
+    function renderMembers() {
+      const container = document.getElementById('memberList');
+      const filtered = state.members.filter(m => {
+        if (currentFilter === 'attending') return m.attending;
+        if (currentFilter === 'absent') return !m.attending;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-sm text-gray-400">해당 조건의 회원이 없습니다.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(m => {
+        const isEarlyLeave = m.attending && m.end !== '20:30';
+        const isLateJoin = m.attending && m.start !== '18:00';
+        const startOptions = TIME_POINTS.slice(0, -1).map(t => `<option value="${t}" ${m.start === t ? 'selected' : ''}>${t}</option>`).join('');
+        const endOptions = TIME_POINTS.slice(1).map(t => `<option value="${t}" ${m.end === t ? 'selected' : ''} ${timeToIdx(t) <= timeToIdx(m.start) ? 'disabled' : ''}>${t}</option>`).join('');
+
+        return `
+          <div class="rounded-xl border ${m.attending ? 'border-green-200 bg-green-50/40' : 'border-gray-200 bg-gray-50/70 opacity-75'} p-3 transition">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <button type="button" data-action="toggle-attend" data-id="${m.id}"
+                  class="px-2.5 py-1 rounded-lg text-xs font-bold transition ${m.attending ? 'bg-green-700 text-white' : 'bg-gray-300 text-gray-700'}">
+                  ${m.attending ? '참석' : '불참'}
+                </button>
+                <span class="font-bold text-gray-900 text-sm sm:text-base">${escapeHtml(m.name)}</span>
+                ${isLateJoin ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-800">${m.start} 늦참</span>` : ''}
+                ${isEarlyLeave ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800">${m.end} 조기퇴근</span>` : ''}
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center gap-1 text-xs">
+                  <select data-action="change-start" data-id="${m.id}" ${!m.attending ? 'disabled' : ''}
+                    class="px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-800 font-medium disabled:opacity-50">
+                    ${startOptions}
+                  </select>
+                  <span class="text-gray-400">~</span>
+                  <select data-action="change-end" data-id="${m.id}" ${!m.attending ? 'disabled' : ''}
+                    class="px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-800 font-medium disabled:opacity-50">
+                    ${endOptions}
+                  </select>
+                </div>
+
+                <select data-action="change-singles" data-id="${m.id}" ${!m.attending ? 'disabled' : ''}
+                  class="px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-700 font-medium disabled:opacity-50">
+                  <option value="no" ${m.singlesPref === 'no' ? 'selected' : ''}>단식 비선호</option>
+                  <option value="neutral" ${m.singlesPref === 'neutral' ? 'selected' : ''}>단식 무관</option>
+                  <option value="yes" ${m.singlesPref === 'yes' ? 'selected' : ''}>단식 선호</option>
+                </select>
+
+                <button type="button" data-action="edit-member" data-id="${m.id}" class="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg" title="이름 수정">
+                  <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                </button>
+                <button type="button" data-action="delete-member" data-id="${m.id}" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg" title="삭제">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSchedule() {
+      const metricsEl = document.getElementById('qualityMetrics');
+      const slotsEl = document.getElementById('scheduleSlots');
+      const summaryBody = document.getElementById('playerSummaryBody');
+      const memberMap = Object.fromEntries(state.members.map(m => [m.id, m]));
+      const attending = state.members.filter(m => m.attending && getMemberAvailableSlots(m).length > 0);
+
+      if (!currentSchedule || !currentSchedule.metrics) {
+        metricsEl.innerHTML = '';
+        slotsEl.innerHTML = `<div class="py-8 text-center text-sm text-gray-500">참석 인원이 2명 이상일 때 대진표가 생성됩니다.</div>`;
+        summaryBody.innerHTML = '';
+        return;
+      }
+
+      const m = currentSchedule.metrics;
+      metricsEl.innerHTML = `
+        <span class="px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-900">${m.minGames === m.maxGames ? `전원 ${m.maxGames}게임` : `${m.minGames}~${m.maxGames}게임`}</span>
+        <span class="px-2 py-0.5 rounded-full font-semibold ${m.consecutiveRests === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">연속휴식 ${m.consecutiveRests}회</span>
+        <span class="px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-900">복식 ${m.doublesCount} · 단식 ${m.singlesCount}</span>
+      `;
+
+      const formatCourtCell = (court, isClosed) => {
+        if (isClosed) return `<div class="text-center text-[11px] text-gray-300">-</div>`;
+        if (!court) return `<div class="text-center text-[11px] text-gray-400">미배정</div>`;
+        const tA = court.teamA.map(id => formatPlayerBadge(memberMap[id])).join('·');
+        const tB = court.teamB.map(id => formatPlayerBadge(memberMap[id])).join('·');
+        const vsLabel = court.type === 'singles' ? 'VS(단)' : 'VS';
+        return `
+          <div class="flex flex-col items-center justify-center gap-0.5 leading-tight">
+            <div class="px-1.5 py-0.5 rounded bg-green-50 border border-green-200 text-[11px] sm:text-xs whitespace-nowrap">${tA}</div>
+            <span class="px-1.5 rounded bg-green-800 text-white text-[9px] font-extrabold tracking-wider leading-tight">${vsLabel}</span>
+            <div class="px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200 text-[11px] sm:text-xs whitespace-nowrap">${tB}</div>
+          </div>
+        `;
+      };
+
+      const rowsHtml = currentSchedule.slots.map(sl => {
+        const c1 = sl.courts[0] || null;
+        const c2 = sl.courts[1] || null;
+        const restingNames = sl.resting.map(id => escapeHtml(memberMap[id]?.name || '')).filter(Boolean);
+        return `
+          <tr class="hover:bg-green-50/30 transition">
+            <td class="py-1.5 pr-1.5 whitespace-nowrap align-middle text-center">
+              <div class="font-semibold text-gray-600 text-[10px] leading-tight">${sl.start}<br>~${sl.end}</div>
+            </td>
+            <td class="py-1.5 px-1.5 align-middle border-l border-gray-200">${formatCourtCell(c1, sl.courtCount < 1)}</td>
+            <td class="py-1.5 px-1.5 align-middle border-l border-gray-200">${formatCourtCell(c2, sl.courtCount < 2)}</td>
+            <td class="py-1.5 pl-1.5 align-middle border-l border-gray-200 text-center text-[11px] leading-tight font-medium text-gray-700">${restingNames.length ? restingNames.join('<br>') : '<span class="text-gray-300">-</span>'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      slotsEl.innerHTML = `
+        <table class="w-full text-center border-collapse">
+          <thead>
+            <tr class="border-b-2 border-green-900/15 text-[11px] text-gray-500">
+              <th class="py-1.5 pr-1.5 font-semibold w-12">시간</th>
+              <th class="py-1.5 px-1.5 font-semibold border-l border-gray-200">1코트</th>
+              <th class="py-1.5 px-1.5 font-semibold border-l border-gray-200">2코트</th>
+              <th class="py-1.5 pl-1.5 font-semibold border-l border-gray-200 w-16">휴식</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            ${rowsHtml}
+          </tbody>
+        </table>
+      `;
+
+      // Player summary table
+      summaryBody.innerHTML = attending.map(mem => {
+        const g = currentSchedule.gamesPlayed[mem.id] || 0;
+        const sg = currentSchedule.singlesPlayed[mem.id] || 0;
+        const db = g - sg;
+        let consec = 0;
+        const statusCells = SLOTS.map(sl => {
+          if (!isMemberAvailableInSlot(mem, sl.id)) {
+            return `<span class="inline-block w-5 h-5 leading-5 text-center rounded text-[10px] bg-gray-100 text-gray-300">-</span>`;
+          }
+          const played = currentSchedule.slotPlayed[mem.id][sl.id];
+          if (sl.id > 0 && isMemberAvailableInSlot(mem, sl.id - 1) && !currentSchedule.slotPlayed[mem.id][sl.id - 1] && !played) {
+            consec++;
+          }
+          return played
+            ? `<span class="inline-block w-5 h-5 leading-5 text-center rounded text-[10px] font-bold bg-green-600 text-white" title="${sl.label} 경기">O</span>`
+            : `<span class="inline-block w-5 h-5 leading-5 text-center rounded text-[10px] font-bold bg-amber-100 text-amber-800" title="${sl.label} 휴식">휴</span>`;
+        }).join(' ');
+
+        return `
+          <tr>
+            <td class="py-2.5 pr-3 font-semibold text-gray-900 whitespace-nowrap">${escapeHtml(mem.name)}</td>
+            <td class="py-2.5 px-2 text-gray-600 whitespace-nowrap">${mem.start}~${mem.end}</td>
+            <td class="py-2.5 px-2 text-center font-bold text-green-900">${g}</td>
+            <td class="py-2.5 px-2 text-center text-gray-600">${db} / ${sg}</td>
+            <td class="py-2.5 px-2 text-center ${consec > 0 ? 'text-red-600 font-bold' : 'text-emerald-700'}">${consec}회</td>
+            <td class="py-2.5 pl-2 whitespace-nowrap space-x-0.5">${statusCells}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function formatPlayerBadge(member) {
+      if (!member) return '';
+      const early = member.end !== '20:30';
+      return `<span class="font-bold whitespace-nowrap ${early ? 'text-amber-800 underline decoration-amber-400/70 underline-offset-2' : 'text-gray-950'}">${escapeHtml(member.name)}</span>`;
+    }
+
+    function renderSettings() {
+      const grid = document.getElementById('courtSettingsGrid');
+      grid.innerHTML = SLOTS.map((sl, idx) => {
+        const cnt = state.courtsPerSlot[idx];
+        return `
+          <div class="flex items-center justify-between p-3 rounded-xl border border-gray-200 bg-gray-50/50">
+            <span class="text-sm font-semibold text-gray-800">${sl.label}</span>
+            <div class="flex items-center gap-1">
+              ${[0, 1, 2].map(n => `
+                <button type="button" data-action="set-court" data-slot="${idx}" data-count="${n}"
+                  class="px-2.5 py-1 rounded-lg text-xs font-bold transition ${cnt === n ? 'bg-green-700 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'}">
+                  ${n}면
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('optMinimizeSingles').checked = state.options.minimizeSingles;
+      document.getElementById('optAllowSingles').checked = state.options.allowSingles;
+      document.getElementById('optEarlyPriority').checked = state.options.earlyPriority;
+      document.getElementById('optNoConsecutiveRest').checked = state.options.noConsecutiveRest;
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, s => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[s]);
+    }
+
+    // ===== Tab Switching =====
+    function switchTab(tabName) {
+      currentTab = tabName;
+      document.querySelector('main > section').classList.toggle('hidden', tabName === 'schedule');
+      ['attendance', 'schedule', 'settings'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle('hidden', t !== tabName);
+      });
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        const active = btn.dataset.tab === tabName;
+        btn.classList.toggle('tab-active', active);
+        btn.classList.toggle('tab-inactive', !active);
+      });
+      if (tabName === 'schedule') {
+        runScheduleOptimizer();
+        renderSchedule();
+      }
+      lucide.createIcons();
+    }
+
+    // ===== Modal Logic =====
+    function openModal({ title, bodyHtml, onSave }) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalBody').innerHTML = bodyHtml;
+      modalAction = onSave;
+      document.getElementById('modalBackdrop').classList.remove('hidden');
+      lucide.createIcons();
+      const firstInput = document.querySelector('#modalBody input');
+      if (firstInput) firstInput.focus();
+    }
+
+    function closeModal() {
+      document.getElementById('modalBackdrop').classList.add('hidden');
+      modalAction = null;
+    }
+
+    // ===== KakaoTalk Text Export =====
+    function buildKakaoShareText() {
+      if (!currentSchedule) runScheduleOptimizer();
+      const memberMap = Object.fromEntries(state.members.map(m => [m.id, m]));
+      const attending = state.members.filter(m => m.attending);
+      let lines = [
+        `🎾 [${state.title} 대진표]`,
+        `참석: ${attending.length}명`,
+        ''
+      ];
+      currentSchedule.slots.forEach(sl => {
+        lines.push(`⏰ ${sl.label} (코트 ${sl.courtCount}면)`);
+        if (sl.courts.length === 0) {
+          lines.push('  - 경기 없음');
+        } else {
+          sl.courts.forEach(c => {
+            const tA = c.teamA.map(id => memberMap[id]?.name || '').join(',');
+            const tB = c.teamB.map(id => memberMap[id]?.name || '').join(',');
+            lines.push(`  • ${c.courtNum}코트(${c.type === 'singles' ? '단식' : '복식'}): ${tA} vs ${tB}`);
+          });
+        }
+        if (sl.resting.length > 0) {
+          lines.push(`  💤 휴식: ${sl.resting.map(id => memberMap[id]?.name || '').join(', ')}`);
+        }
+        lines.push('');
+      });
+      return lines.join('\n').trim();
+    }
+
+    // ===== Event Listeners =====
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentFilter = btn.dataset.filter;
+        document.querySelectorAll('.filter-btn').forEach(b => {
+          const active = b.dataset.filter === currentFilter;
+          b.className = `filter-btn px-2.5 py-1 rounded-full font-medium ${active ? 'bg-green-100 text-green-900' : 'bg-gray-100 text-gray-600'}`;
+        });
+        renderMembers();
+        lucide.createIcons();
+      });
+    });
+
+    document.getElementById('memberList').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const action = btn.dataset.action;
+      const member = state.members.find(m => m.id === id);
+      if (!member) return;
+
+      if (action === 'toggle-attend') {
+        member.attending = !member.attending;
+        saveState();
+        currentSchedule = null;
+        renderAll();
+      } else if (action === 'edit-member') {
+        openModal({
+          title: '회원 이름 수정',
+          bodyHtml: `<input id="modalMemberName" type="text" value="${escapeHtml(member.name)}" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-green-600" placeholder="이름 입력" />`,
+          onSave: () => {
+            const val = document.getElementById('modalMemberName').value.trim();
+            if (!val) return showToast('이름을 입력해주세요.');
+            member.name = val;
+            saveState();
+            currentSchedule = null;
+            closeModal();
+            renderAll();
+          }
+        });
+      } else if (action === 'delete-member') {
+        state.members = state.members.filter(m => m.id !== id);
+        saveState();
+        currentSchedule = null;
+        renderAll();
+        showToast(`${member.name} 회원이 삭제되었습니다.`);
+      }
+    });
+
+    document.getElementById('memberList').addEventListener('change', e => {
+      const sel = e.target.closest('select[data-action]');
+      if (!sel) return;
+      const id = sel.dataset.id;
+      const action = sel.dataset.action;
+      const member = state.members.find(m => m.id === id);
+      if (!member) return;
+
+      if (action === 'change-start') {
+        member.start = sel.value;
+        if (timeToIdx(member.end) <= timeToIdx(member.start)) {
+          member.end = TIME_POINTS[timeToIdx(member.start) + 1];
+        }
+      } else if (action === 'change-end') {
+        member.end = sel.value;
+      } else if (action === 'change-singles') {
+        member.singlesPref = sel.value;
+      }
+      saveState();
+      currentSchedule = null;
+      renderAll();
+    });
+
+    document.getElementById('addMemberBtn').addEventListener('click', () => {
+      openModal({
+        title: '새 회원 추가',
+        bodyHtml: `
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">이름</label>
+            <input id="modalNewName" type="text" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-green-600" placeholder="예: 홍길동" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">시작 시간</label>
+              <select id="modalNewStart" class="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-sm">
+                ${TIME_POINTS.slice(0, -1).map(t => `<option value="${t}">${t}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">종료 시간</label>
+              <select id="modalNewEnd" class="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-sm">
+                ${TIME_POINTS.slice(1).map(t => `<option value="${t}" ${t === '20:30' ? 'selected' : ''}>${t}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+        `,
+        onSave: () => {
+          const name = document.getElementById('modalNewName').value.trim();
+          const start = document.getElementById('modalNewStart').value;
+          let end = document.getElementById('modalNewEnd').value;
+          if (!name) return showToast('이름을 입력해주세요.');
+          if (timeToIdx(end) <= timeToIdx(start)) {
+            end = TIME_POINTS[timeToIdx(start) + 1];
+          }
+          state.members.push({
+            id: 'm' + Date.now(),
+            name,
+            attending: true,
+            start,
+            end,
+            singlesPref: 'no'
+          });
+          saveState();
+          currentSchedule = null;
+          closeModal();
+          renderAll();
+          showToast(`${name}님이 추가되었습니다.`);
+        }
+      });
+    });
+
+    document.getElementById('editClubTitleBtn').addEventListener('click', () => {
+      openModal({
+        title: '모임 제목 수정',
+        bodyHtml: `<input id="modalClubTitle" type="text" value="${escapeHtml(state.title)}" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-green-600" />`,
+        onSave: () => {
+          const val = document.getElementById('modalClubTitle').value.trim();
+          if (!val) return showToast('제목을 입력해주세요.');
+          state.title = val;
+          saveState();
+          closeModal();
+          renderAll();
+        }
+      });
+    });
+
+    document.getElementById('allAttendBtn').addEventListener('click', () => {
+      state.members.forEach(m => { m.attending = true; });
+      saveState();
+      currentSchedule = null;
+      renderAll();
+      showToast('모든 회원을 참석으로 변경했습니다.');
+    });
+
+    document.getElementById('resetSampleBtn').addEventListener('click', () => {
+      state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+      saveState();
+      currentSchedule = null;
+      renderAll();
+      showToast('기본 샘플 명단으로 초기화했습니다.');
+    });
+
+    document.getElementById('generateFromAttendanceBtn').addEventListener('click', () => {
+      switchTab('schedule');
+      showToast('최적 대진표를 생성했습니다!');
+    });
+
+    document.getElementById('toggleDetailBtn').addEventListener('click', () => {
+      document.getElementById('playerSummaryCard').classList.toggle('hidden');
+    });
+
+    document.getElementById('reoptimizeBtn').addEventListener('click', () => {
+      runScheduleOptimizer();
+      renderSchedule();
+      lucide.createIcons();
+      showToast('대진표를 새로 조합했습니다.');
+    });
+
+    document.getElementById('courtSettingsGrid').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-action="set-court"]');
+      if (!btn) return;
+      const slot = Number(btn.dataset.slot);
+      const count = Number(btn.dataset.count);
+      state.courtsPerSlot[slot] = count;
+      saveState();
+      currentSchedule = null;
+      renderAll();
+    });
+
+    ['optMinimizeSingles', 'optAllowSingles', 'optEarlyPriority', 'optNoConsecutiveRest'].forEach(id => {
+      document.getElementById(id).addEventListener('change', e => {
+        const keyMap = {
+          optMinimizeSingles: 'minimizeSingles',
+          optAllowSingles: 'allowSingles',
+          optEarlyPriority: 'earlyPriority',
+          optNoConsecutiveRest: 'noConsecutiveRest'
+        };
+        state.options[keyMap[id]] = e.target.checked;
+        saveState();
+        currentSchedule = null;
+        renderHeaderStats();
+      });
+    });
+
+    document.getElementById('copyShareLinkBtn').addEventListener('click', () => {
+      saveState();
+      copyTextToClipboard(window.location.href, '현재 참석 현황이 담긴 공유 링크를 복사했습니다!');
+    });
+
+    document.getElementById('copyKakaoTextBtn').addEventListener('click', () => {
+      const txt = buildKakaoShareText();
+      copyTextToClipboard(txt, '카톡 공유용 대진표 텍스트를 복사했습니다!');
+    });
+
+    document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+    document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+    document.getElementById('modalSaveBtn').addEventListener('click', () => {
+      if (modalAction) modalAction();
+    });
+
+    // Initialize
+    renderAll();
+  </script>
+</body>
+</html>
